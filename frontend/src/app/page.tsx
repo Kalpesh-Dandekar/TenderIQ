@@ -1,11 +1,14 @@
+import { AgentIntelligence } from "@/components/landing/agent-intelligence";
+import { BlueprintSpotlight } from "@/components/landing/blueprint-spotlight";
+import { Capabilities } from "@/components/landing/capabilities";
+import { EvidenceEvaluation } from "@/components/landing/evidence-evaluation";
+import { Footer } from "@/components/landing/footer";
+import { Hero } from "@/components/landing/hero";
+import { Navbar } from "@/components/landing/navbar";
+import { ProcurementSides } from "@/components/landing/procurement-sides";
+import { ScaleSection } from "@/components/landing/scale-section";
+import { Workflow } from "@/components/landing/workflow";
+
 export default function Home() {
-  return (
-    <main className="flex min-h-screen items-center justify-center p-8">
-      <section className="text-center">
-        <h1 className="text-4xl font-semibold tracking-tight">TenderIQ</h1>
-        <p className="mt-3 text-lg text-slate-600">Intelligent Procurement Platform</p>
-        <p className="mt-6 text-sm text-emerald-700">Frontend operational</p>
-      </section>
-    </main>
-  );
+  return <div className="site-shell"><Navbar /><main><Hero /><Capabilities /><Workflow /><BlueprintSpotlight /><EvidenceEvaluation /><AgentIntelligence /><ScaleSection /><ProcurementSides /></main><Footer /></div>;
 }
