@@ -1,0 +1,14 @@
+"use client";
+import { useMemo, useState } from "react";
+import Link from "next/link";
+import { tenders } from "@/data/demo-procurement";
+import { Icon } from "../icons";
+import { ProcurementHeader } from "../procurement-header";
+import styles from "../procurement.module.css";
+
+const filters = ["All Tenders","Drafts","Published","Under Evaluation","Completed"] as const;
+export function TendersPage() {
+  const [filter,setFilter]=useState<(typeof filters)[number]>("All Tenders"); const [query,setQuery]=useState("");
+  const visible=useMemo(()=>tenders.filter(t=>{const stage=filter==="All Tenders"||t.stage===filter.replace(/s$/,"");const text=`${t.title} ${t.reference} ${t.location}`.toLowerCase().includes(query.toLowerCase());return stage&&text}),[filter,query]);
+  return <div className={styles.page}><ProcurementHeader context="Procurement management" title="Tenders" description="Create, publish and manage procurement opportunities from one workspace." action={<Link className="button" href="/organization/tenders/new"><Icon name="plus" />Create Tender</Link>} /><div className={styles.tabs} role="tablist" aria-label="Tender status">{filters.map(item=><button className={styles.tab} role="tab" aria-selected={filter===item} key={item} onClick={()=>setFilter(item)}>{item} <span>{item==="All Tenders"?tenders.length:tenders.filter(t=>t.stage===item.replace(/s$/,"")).length}</span></button>)}</div><div className={styles.toolbar}><input className={styles.search} aria-label="Search tenders" placeholder="Search tenders or references" value={query} onChange={e=>setQuery(e.target.value)} /><select className={styles.select} aria-label="Status filter" value={filter} onChange={e=>setFilter(e.target.value as typeof filter)}>{filters.map(item=><option key={item}>{item}</option>)}</select><select className={styles.select} aria-label="Sort tenders"><option>Recently updated</option><option>Deadline</option><option>Estimated value</option></select></div><section className={styles.panel}><div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Tender</th><th>Procurement Type</th><th>Stage</th><th>Deadline</th><th>Proposals</th><th>Estimated Value</th><th>Updated</th><th /></tr></thead><tbody>{visible.map((tender,index)=><tr key={tender.id}><td className={styles.titleCell}><strong>{tender.title}</strong><span>{tender.location} · {tender.reference}</span></td><td>{tender.category}</td><td><span className={`${styles.status} ${tender.stage==="Completed"?styles.success:tender.stage==="Draft"?styles.warning:""}`}>{tender.stage}</span></td><td className={styles.mono}>{tender.submission}</td><td>{index===0?"100":index===1?"18":"8"}</td><td>{tender.estimatedCost}</td><td className={styles.mono}>{index===0?"Today":"12 Sep"}</td><td><Link className={styles.action} href={tender.id==="bphu"?"/organization/tenders/bphu":"/organization/tenders"}>Open →</Link></td></tr>)}</tbody></table></div></section></div>;
+}
