@@ -1,2 +1,2 @@
-import { WorkspacePlaceholder } from "@/components/auth/workspace-placeholder";
-export default function OrganizationPage() { return <WorkspacePlaceholder role="organization" />; }
+import { OrganizationOverview } from "@/components/organization/overview/overview";
+export default function OrganizationPage() { return <OrganizationOverview />; }

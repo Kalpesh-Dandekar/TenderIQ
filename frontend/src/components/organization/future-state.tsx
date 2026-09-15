@@ -1,0 +1,2 @@
+import styles from "./organization.module.css";
+export function FutureState({ index, title, description, scope }: { index: string; title: string; description: string; scope: string }) { return <section className={styles.placeholder}><div className={styles.placeholderInner}><span className={styles.placeholderIndex}>{index}</span><p className={styles.eyebrow}>Organization workspace · Coming next</p><h1>{title}</h1><p>{description}</p><div className={styles.placeholderMeta}>{scope}</div></div></section>; }
