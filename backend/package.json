@@ -1,0 +1,37 @@
+{
+  "name": "tenderiq-backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/server.js",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "prisma:generate": "prisma generate",
+    "prisma:validate": "prisma validate"
+  },
+  "dependencies": {
+    "@prisma/client": "7.10.0",
+    "cors": "latest",
+    "dotenv": "latest",
+    "express": "latest",
+    "helmet": "latest",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@eslint/js": "latest",
+    "@types/cors": "latest",
+    "@types/express": "latest",
+    "@types/node": "latest",
+    "eslint": "latest",
+    "prisma": "7.10.0",
+    "tsx": "latest",
+    "typescript": "latest",
+    "typescript-eslint": "latest"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}
