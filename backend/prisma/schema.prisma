@@ -6,3 +6,411 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+enum TenderStatus {
+  DRAFT
+  PROCESSING
+  READY_FOR_REVIEW
+  PUBLISHED
+  CLOSED
+  ARCHIVED
+  PROCESSING_FAILED
+}
+
+enum BlueprintStatus {
+  PENDING
+  PROCESSING
+  READY
+  REVIEW_REQUIRED
+  FAILED
+  SUPERSEDED
+}
+
+enum RequirementCategory {
+  ELIGIBILITY
+  TECHNICAL
+  FINANCIAL
+  DOCUMENT
+  COMMERCIAL
+  LEGAL
+  OTHER
+}
+
+enum VerificationStatus {
+  NOT_CHECKED
+  PROCESSING
+  VALIDATED
+  EXTERNALLY_VERIFIED
+  VERIFICATION_PENDING
+  SUSPICIOUS_REQUIRES_REVIEW
+  UNABLE_TO_VERIFY
+  FAILED
+}
+
+enum ProposalStatus {
+  DRAFT
+  PROCESSING
+  READY_FOR_REVIEW
+  SUBMITTED
+  EVALUATING
+  CLARIFICATION_REQUIRED
+  SHORTLISTED
+  NOT_SELECTED
+  AWARDED
+  WITHDRAWN
+  PROCESSING_FAILED
+}
+
+enum SubmissionStatus {
+  SUBMITTED
+  SUPERSEDED
+  WITHDRAWN
+}
+
+enum EvidenceStatus {
+  NOT_EVALUATED
+  COMPLIANT
+  NON_COMPLIANT
+  EVIDENCE_MISSING
+  REQUIRES_REVIEW
+}
+
+enum EvaluationStatus {
+  PENDING
+  PROCESSING
+  COMPLETE
+  REVIEW_REQUIRED
+  FAILED
+}
+
+enum AgentType {
+  TECHNICAL
+  FINANCIAL
+  COMPLIANCE
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenders   Tender[]
+}
+
+model Vendor {
+  id        String           @id @default(cuid())
+  name      String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  documents VendorDocument[]
+  proposals Proposal[]
+}
+
+model Tender {
+  id                 String              @id @default(cuid())
+  organizationId     String
+  title              String
+  referenceNumber    String
+  description        String?
+  estimatedCost      Decimal?            @db.Decimal(20, 2)
+  currency           String              @default("INR") @db.VarChar(3)
+  submissionDeadline DateTime?
+  status             TenderStatus        @default(DRAFT)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  organization       Organization        @relation(fields: [organizationId], references: [id], onDelete: Restrict)
+  documents          TenderDocument[]
+  blueprints         TenderBlueprint[]
+  requirements       TenderRequirement[]
+  requiredDocuments  RequiredDocument[]
+  proposals          Proposal[]
+
+  @@unique([organizationId, referenceNumber])
+  @@index([organizationId])
+  @@index([status])
+}
+
+model TenderDocument {
+  id               String   @id @default(cuid())
+  tenderId         String
+  originalFilename String
+  storageKey       String   @unique
+  mimeType         String
+  sizeBytes        BigInt
+  sha256           String   @db.VarChar(64)
+  version          Int
+  createdAt        DateTime @default(now())
+  tender           Tender   @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+
+  @@unique([tenderId, version])
+  @@index([tenderId])
+}
+
+model TenderBlueprint {
+  id                String              @id @default(cuid())
+  tenderId          String
+  version           Int
+  status            BlueprintStatus     @default(PENDING)
+  blueprintJson     Json
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  tender            Tender              @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  requirements      TenderRequirement[]
+  requiredDocuments RequiredDocument[]
+
+  @@unique([tenderId, version])
+  @@index([tenderId, status])
+}
+
+model TenderRequirement {
+  id                  String                       @id @default(cuid())
+  tenderId            String
+  blueprintId         String?
+  requirementCode     String
+  category            RequirementCategory
+  requirementText     String
+  operator            String?
+  requiredValue       Decimal?                     @db.Decimal(20, 2)
+  unit                String?
+  period              String?
+  mandatory           Boolean                      @default(true)
+  expectedEvidence    Json
+  sourcePage          Int?
+  sourceClause        String?
+  sourceText          String?
+  createdAt           DateTime                     @default(now())
+  updatedAt           DateTime                     @updatedAt
+  tender              Tender                       @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  blueprint           TenderBlueprint?             @relation(fields: [blueprintId], references: [id], onDelete: SetNull)
+  claims              VendorClaim[]
+  evidenceMappings    EvidenceMapping[]
+  proposalDocuments   ProposalDocument[]
+  submissionDocuments ProposalSubmissionDocument[]
+
+  @@unique([blueprintId, requirementCode])
+  @@index([tenderId, requirementCode])
+  @@index([tenderId, category])
+  @@index([blueprintId])
+}
+
+model RequiredDocument {
+  id               String           @id @default(cuid())
+  tenderId         String
+  blueprintId      String?
+  code             String
+  name             String
+  category         String
+  mandatory        Boolean          @default(true)
+  alternativeGroup String?
+  description      String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  tender           Tender           @relation(fields: [tenderId], references: [id], onDelete: Cascade)
+  blueprint        TenderBlueprint? @relation(fields: [blueprintId], references: [id], onDelete: SetNull)
+
+  @@unique([blueprintId, code])
+  @@index([tenderId, code])
+  @@index([tenderId, alternativeGroup])
+  @@index([blueprintId])
+}
+
+model VendorDocument {
+  id           String            @id @default(cuid())
+  vendorId     String
+  documentType String
+  category     String
+  displayName  String
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  vendor       Vendor            @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  versions     DocumentVersion[]
+
+  @@index([vendorId, category])
+}
+
+model DocumentVersion {
+  id                  String                       @id @default(cuid())
+  vendorDocumentId    String
+  version             Int
+  originalFilename    String
+  storageKey          String                       @unique
+  mimeType            String
+  sizeBytes           BigInt
+  sha256              String                       @db.VarChar(64)
+  validFrom           DateTime?
+  validUntil          DateTime?
+  issuedAt            DateTime?
+  issuer              String?
+  identifier          String?
+  verificationStatus  VerificationStatus           @default(NOT_CHECKED)
+  extractedMetadata   Json?
+  createdAt           DateTime                     @default(now())
+  vendorDocument      VendorDocument               @relation(fields: [vendorDocumentId], references: [id], onDelete: Cascade)
+  proposalDocuments   ProposalDocument[]
+  submissionDocuments ProposalSubmissionDocument[]
+  sourcedClaims       VendorClaim[]                @relation("ClaimSourceDocument")
+  evidenceMappings    EvidenceMapping[]            @relation("EvidenceDocument")
+
+  @@unique([vendorDocumentId, version])
+  @@index([vendorDocumentId, verificationStatus])
+}
+
+model Proposal {
+  id               String               @id @default(cuid())
+  tenderId         String
+  vendorId         String
+  status           ProposalStatus       @default(DRAFT)
+  bidAmount        Decimal?             @db.Decimal(20, 2)
+  currency         String               @default("INR") @db.VarChar(3)
+  currentVersion   Int                  @default(1)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+  submittedAt      DateTime?
+  tender           Tender               @relation(fields: [tenderId], references: [id], onDelete: Restrict)
+  vendor           Vendor               @relation(fields: [vendorId], references: [id], onDelete: Restrict)
+  documents        ProposalDocument[]
+  submissions      ProposalSubmission[]
+  blueprints       VendorBlueprint[]
+  claims           VendorClaim[]
+  evidenceMappings EvidenceMapping[]
+  evaluationRuns   EvaluationRun[]
+
+  @@unique([vendorId, tenderId])
+  @@index([tenderId, status])
+  @@index([vendorId, status])
+}
+
+model ProposalDocument {
+  id                String             @id @default(cuid())
+  proposalId        String
+  documentVersionId String
+  requirementId     String?
+  attachmentRole    String?
+  createdAt         DateTime           @default(now())
+  proposal          Proposal           @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  documentVersion   DocumentVersion    @relation(fields: [documentVersionId], references: [id], onDelete: Restrict)
+  requirement       TenderRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+
+  @@unique([proposalId, documentVersionId])
+  @@index([proposalId])
+  @@index([requirementId])
+}
+
+model ProposalSubmission {
+  id          String                       @id @default(cuid())
+  proposalId  String
+  version     Int
+  submittedAt DateTime                     @default(now())
+  status      SubmissionStatus             @default(SUBMITTED)
+  createdAt   DateTime                     @default(now())
+  proposal    Proposal                     @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  documents   ProposalSubmissionDocument[]
+
+  @@unique([proposalId, version])
+  @@index([proposalId, status])
+}
+
+model ProposalSubmissionDocument {
+  id                String             @id @default(cuid())
+  submissionId      String
+  documentVersionId String
+  requirementId     String?
+  createdAt         DateTime           @default(now())
+  submission        ProposalSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  documentVersion   DocumentVersion    @relation(fields: [documentVersionId], references: [id], onDelete: Restrict)
+  requirement       TenderRequirement? @relation(fields: [requirementId], references: [id], onDelete: SetNull)
+
+  @@unique([submissionId, documentVersionId])
+  @@index([submissionId])
+  @@index([requirementId])
+}
+
+model VendorBlueprint {
+  id            String          @id @default(cuid())
+  proposalId    String
+  version       Int
+  status        BlueprintStatus @default(PENDING)
+  blueprintJson Json
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  proposal      Proposal        @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  claims        VendorClaim[]
+
+  @@unique([proposalId, version])
+  @@index([proposalId, status])
+}
+
+model VendorClaim {
+  id                      String             @id @default(cuid())
+  proposalId              String
+  vendorBlueprintId       String?
+  claimCode               String
+  mappedRequirementId     String?
+  claimText               String
+  normalizedValue         Decimal?           @db.Decimal(20, 2)
+  unit                    String?
+  sourceDocumentVersionId String?
+  sourcePage              Int?
+  sourceText              String?
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+  proposal                Proposal           @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  vendorBlueprint         VendorBlueprint?   @relation(fields: [vendorBlueprintId], references: [id], onDelete: SetNull)
+  mappedRequirement       TenderRequirement? @relation(fields: [mappedRequirementId], references: [id], onDelete: SetNull)
+  sourceDocumentVersion   DocumentVersion?   @relation("ClaimSourceDocument", fields: [sourceDocumentVersionId], references: [id], onDelete: SetNull)
+  evidenceMappings        EvidenceMapping[]
+
+  @@unique([proposalId, claimCode])
+  @@index([proposalId, mappedRequirementId])
+  @@index([vendorBlueprintId])
+}
+
+model EvidenceMapping {
+  id                String            @id @default(cuid())
+  proposalId        String
+  requirementId     String
+  claimId           String?
+  documentVersionId String?
+  status            EvidenceStatus    @default(NOT_EVALUATED)
+  evidencePage      Int?
+  evidenceText      String?
+  explanation       String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  proposal          Proposal          @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  requirement       TenderRequirement @relation(fields: [requirementId], references: [id], onDelete: Restrict)
+  claim             VendorClaim?      @relation(fields: [claimId], references: [id], onDelete: SetNull)
+  documentVersion   DocumentVersion?  @relation("EvidenceDocument", fields: [documentVersionId], references: [id], onDelete: SetNull)
+
+  @@index([proposalId, status])
+  @@index([requirementId])
+  @@index([claimId])
+}
+
+model EvaluationRun {
+  id               String            @id @default(cuid())
+  proposalId       String
+  status           EvaluationStatus  @default(PENDING)
+  startedAt        DateTime?
+  completedAt      DateTime?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  proposal         Proposal          @relation(fields: [proposalId], references: [id], onDelete: Cascade)
+  agentEvaluations AgentEvaluation[]
+
+  @@index([proposalId, status])
+}
+
+model AgentEvaluation {
+  id              String           @id @default(cuid())
+  evaluationRunId String
+  agentType       AgentType
+  status          EvaluationStatus @default(PENDING)
+  resultJson      Json
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  evaluationRun   EvaluationRun    @relation(fields: [evaluationRunId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluationRunId, agentType])
+  @@index([evaluationRunId, status])
+}
