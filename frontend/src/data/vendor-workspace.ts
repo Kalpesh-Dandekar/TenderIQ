@@ -28,3 +28,12 @@ export const proposalBlueprint = [
 ] as const;
 export const auditItems = [["Eligibility Readiness","Ready"],["Mandatory Documents","Ready"],["Evidence Coverage","Ready"],["Proposal Completeness","Requires Review"],["Submission Conditions","Ready"]] as const;
 export const vendorRequirements = bphuRequirements;
+
+export const bidActivity = {
+  submittedVersion:"v1", bidValue:apex.bid, submissionState:"Demo Submission State", submittedAt:"16 Sep 2026, 04:15 PM · Simulated", procurementStage:"Technical Review", lockState:"Locked After Submission", integrity:"Backend integrity record pending integration",
+} as const;
+export const reviewProgress = [["Submission Received","Complete"],["Document Review","Complete"],["Technical Review","In Progress"],["Financial Review","Pending"],["Compliance Review","Pending"],["Decision","Pending"]] as const;
+export const clarification = { id:"CLAR-BPHU-01", subject:"Similar-work completion evidence", requestedBy:"Procurement Organization", requestedDate:"17 Sep 2026", deadline:"20 Sep 2026, 05:00 PM", status:"Clarification Required", requirement:"EXP-01", request:"Please provide the completion certificate supporting the referenced similar-work claim." } as const;
+export const demoAward = { label:"Demo Award Scenario", value:apex.bid, notification:"Award / LOI Received", acknowledgement:"Awaiting Acknowledgement", contract:"Preparation In Progress", workOrder:"WO-BPHU-DEMO-001", start:"21 Sep 2026", target:"20 Dec 2026", performanceSecurity:vendorTender.performanceSecurity, completion:vendorTender.completion } as const;
+export const vendorMilestones = [["Site Mobilization","Completed"],["Foundation / Structural Stage","In Progress"],["Building Works","Upcoming"],["Electrical & Plumbing","Upcoming"],["Final Inspection / Handover","Pending Verification"]] as const;
+export const vendorInvoices = [["INV-DEMO-1042","Foundation milestone","₹10,46,200","16 Oct 2026","Partial Match","Ready for Finance Review"]] as const;
