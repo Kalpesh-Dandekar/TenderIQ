@@ -3,9 +3,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.routes.extraction import router as extraction_router
+from app.routes.blueprint import router as blueprint_router
 
 app = FastAPI(title="TenderIQ AI Service", version="0.1.0")
 app.include_router(extraction_router)
+app.include_router(blueprint_router)
 
 
 @app.get("/health")

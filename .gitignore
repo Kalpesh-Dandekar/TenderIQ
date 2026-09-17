@@ -25,3 +25,6 @@ Thumbs.db
 .idea/
 .vscode/
 *.log
+
+# Local TenderIQ demo/test documents
+demo-data/

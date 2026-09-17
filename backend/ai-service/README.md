@@ -1,6 +1,6 @@
-# TenderIQ AI Service — B3 PDF Extraction
+# TenderIQ AI Service — PDF Extraction and Tender Blueprint V1
 
-FastAPI service for deterministic, page-wise tender PDF text extraction with PyMuPDF. B3 returns source metadata, extraction statistics, a SHA-256 digest, and an OCR-readiness assessment. It does not perform OCR, LLM processing, or Tender Blueprint generation.
+The service provides deterministic, page-wise PDF extraction and a source-grounded Tender Blueprint pipeline. A Tender Blueprint describes **what the tender requires**. A future Vendor Blueprint will describe **what a vendor claims or provides**; Vendor Blueprint is not implemented here.
 
 ## Run locally
 
@@ -11,12 +11,21 @@ python -m pip install -r requirements.txt
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-Configuration is documented in `.env.example`. Set `MAX_PDF_SIZE_MB` in the process environment to change the 25 MB default; the service intentionally does not require a dotenv package.
+Configuration is read from process environment variables and documented in `.env.example`:
+
+- `MAX_PDF_SIZE_MB`: upload limit, default 25 MB.
+- `GEMINI_API_KEY`: required only when Blueprint generation is actually invoked. Never commit it.
+- `GEMINI_MODEL`: configurable model name.
+- `BLUEPRINT_CHUNK_MAX_CHARACTERS`: bounded page-aware chunk size.
+- `GEMINI_MAX_ATTEMPTS`: bounded structured-output attempts, limited to 1–3.
+
+Application import, startup, PDF extraction, and tests do not contact Gemini. The Gemini client is created lazily only during actual candidate generation.
 
 ## Endpoints
 
 - `GET http://localhost:8000/health`
 - `POST http://localhost:8000/extract/pdf` with multipart field `file`
+- `POST http://localhost:8000/blueprint/tender` with multipart field `file`
 
 PowerShell example:
 
@@ -34,8 +43,28 @@ The deterministic assessment uses centralized thresholds:
 
 The assessment is a processing hint, not a definitive claim that OCR is required. OCR and Tender Blueprint generation are not implemented in B3.
 
+## Tender Blueprint V1
+
+The Blueprint endpoint reuses B3 validation and extraction, then runs this pipeline:
+
+1. Split extracted pages into bounded chunks without losing page provenance. Oversized pages may be divided, but every segment retains its original page number.
+2. Ask the isolated Google GenAI provider for structured candidate metadata, requirements, required documents, and evaluation rules.
+3. Validate every response against strict Pydantic models. Malformed output receives only the configured bounded attempts.
+4. Reject requirement, document, and evaluation references that point outside their source chunk or quote text absent from the referenced page.
+5. Normalize safely detectable INR amounts, lakh/crore values, percentages, dates, durations, operators, and explicit boolean language in Python.
+6. Conservatively deduplicate exact normalized wording while preserving all distinct source references.
+7. Assign deterministic category-based requirement IDs, document IDs, and evaluation IDs after merging.
+
+Raw wording is always retained. Ambiguous or conflicting facts remain unknown and are marked for review rather than invented. Natural-language requirements are not forced into numeric rules.
+
+The generated JSON maps to the B1 `TenderBlueprint.blueprintJson` field. Requirements and required documents can later be projected into the corresponding B1 relational models. Generation itself does not require PostgreSQL, and persistence is intentionally deferred.
+
+V1 limitations include reliance on text already extracted by PyMuPDF, conservative lexical deduplication, no OCR, no Vendor Blueprint, no evidence mapping, and no vendor evaluation. PDF metadata and SHA-256 identifiers are not authenticity proof.
+
 ## Tests
 
 ```powershell
 python -m pytest
 ```
+
+Gemini is mocked or replaced by fakes in automated tests. Tests require no API key, internet access, quota, or external service.
