@@ -47,6 +47,20 @@ Gemini receives unresolved local information and grounded context under a strict
 
 Hybrid metrics record planned work units, coverage-safeguard units, context characters, actual request/retry counts, and SDK token metadata when supplied. This supports later comparison between full-LLM and hybrid utilization without inventing missing token counts.
 
+### Blueprint evidence packaging
+
+Internal work units are evidence containers, not API requests. The local `BlueprintEvidencePackager` converts unresolved work-unit evidence into a smaller set of packages organized by Blueprint purpose, while retaining original pages, sections, work-unit IDs, candidate IDs, excerpts, local normalization hints, and review flags. Local hints remain advisory; original evidence is authoritative.
+
+Candidate extraction is not treated as complete evidence coverage. For each grounded work unit, the packager retains candidate evidence and compact, procurement-significant residual line regions not adequately represented by those candidates. Residual windows include adjacent source lines so table rows, formulas, and multi-line clauses remain intact without blindly duplicating complete work-unit context.
+
+The packager excludes only confidently irrelevant candidate-free metadata or boilerplate. `OTHER` evidence, uncertain procurement content, and review-required evidence are preserved. Exact and very-high-confidence near duplicates are consolidated with all source references retained. Unrelated procurement domains are never combined solely to lower a future request count.
+
+Internal audit packages default to a 24,000-character ceiling. They are not future API requests. A separate Gemini-facing plan assigns each evidence item once to `QUALIFICATION`, `TECHNICAL`, `COMMERCIAL_FINANCIAL`, or `CONTRACTUAL_OTHER`, while retaining its more granular local purpose and complete provenance.
+
+Gemini-facing records use compact handles, pages, grounded text, review state, and only useful normalized value hints. Section IDs, work-unit IDs, candidate IDs, routing explanations, and duplicate provenance remain in the local evidence map. Category batching happens before size splitting, with an 80,000-character request ceiling. Oversized categories split only between complete evidence records, and no evidence is truncated. These ceilings are character-based planning boundaries, not token estimates. BP-3C.0 performs no Gemini request.
+
+Packaging metrics compare characters before and after packaging, including candidate-derived and residual evidence counts, deduplication, exclusions, review preservation, represented sources, and package-size distribution. They are character measurements and must not be described as exact token or cost savings.
+
 The same extraction and local-intelligence layers are designed for later Vendor Blueprint reuse, but Vendor Blueprint is not implemented.
 
 ## Run locally
