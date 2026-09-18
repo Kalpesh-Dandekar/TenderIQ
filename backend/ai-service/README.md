@@ -2,6 +2,53 @@
 
 The service provides deterministic, page-wise PDF extraction and a source-grounded Tender Blueprint pipeline. A Tender Blueprint describes **what the tender requires**. A future Vendor Blueprint will describe **what a vendor claims or provides**; Vendor Blueprint is not implemented here.
 
+## TenderIQ document intelligence architecture
+
+TenderIQ separates five responsibilities:
+
+1. **PyMuPDF extraction** reads embedded PDF text page by page.
+2. **OCR** will later provide fallback text for scanned/image-only pages; it is not implemented.
+3. **Local Document Intelligence** detects structure and procurement sections, extracts conservative candidates, normalizes safely measurable values, preserves evidence, and classifies resolution capability.
+4. **Gemini semantic reasoning** is selective, evidence-grounded, and capability-routed by the hybrid planner. Local document intelligence and work-unit planning do not invoke Gemini.
+5. **Python and human review** provide deterministic compliance calculations later and resolve remaining uncertainty respectively.
+
+Permanent principles:
+
+> Token optimization must never silently reduce procurement-analysis quality.
+
+> LLM usage is selective, evidence-grounded and confidence-routed.
+
+The internal `LocalDocumentIntelligenceService` accepts the existing B3 `ExtractedDocument` and requires no endpoint, Gemini, internet, database, vector store, or external service. Its reusable output preserves complete pages, detected sections, candidates, source evidence, routing decisions, and processing metrics so a document can be extracted and analyzed once, stored, and reused by future tender or vendor workflows.
+
+Local candidates are not established Tender Requirements. Clear measurable clauses may be classified `LOCAL_DETERMINISTIC`; semantic clauses remain `LLM_REQUIRED`; negated, optional, historical, descriptive, or conflicting contexts are conservatively `REVIEW_REQUIRED`. Unknown content and original page text are retained.
+
+## Hybrid Tender Blueprint finalization
+
+The default scalable Blueprint flow is:
+
+```text
+PDF
+→ PyMuPDF/OCR-ready extraction
+→ Local Document Intelligence
+→ Local Blueprint Draft
+→ confidence and coverage routing
+→ selective Gemini finalization
+→ deterministic grounding, normalization, merge and validation
+→ final Tender Blueprint
+```
+
+Gemini does not read every page by default. Locally reliable requirements and obvious mandatory documents can bypass it. Semantic and relevant review candidates are grouped into deterministic work units with coherent procurement-region context rather than isolated sentences. Substantive procurement-relevant uncovered sections remain eligible for semantic inspection so context reduction cannot silently reduce recall.
+
+Every work unit retains real pages, headings, sections, excerpts, the document SHA-256, and a deterministic ID derived from source content plus prompt version. Duplicate work is suppressed within a run. This identity is suitable for a future persistent cache keyed by document, work unit, model, and prompt version; persistent caching is not implemented yet.
+
+Gemini receives unresolved local information and grounded context under a strict finalization contract. Returned sources are checked against the supplied pages. Reliable local facts are merged first and cannot be silently replaced: conflicting interpretations become review-required. If selective finalization fails or omits an unresolved candidate, the local evidence remains in the Blueprint for review. Hybrid failure never activates expensive full-document processing automatically.
+
+`POST /blueprint/tender` defaults to `HYBRID`. The frozen B4 behavior remains available only through the explicit query mode `?mode=FULL_LLM`, providing a benchmark and controlled recovery path.
+
+Hybrid metrics record planned work units, coverage-safeguard units, context characters, actual request/retry counts, and SDK token metadata when supplied. This supports later comparison between full-LLM and hybrid utilization without inventing missing token counts.
+
+The same extraction and local-intelligence layers are designed for later Vendor Blueprint reuse, but Vendor Blueprint is not implemented.
+
 ## Run locally
 
 ```powershell

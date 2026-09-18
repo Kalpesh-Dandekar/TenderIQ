@@ -5,10 +5,11 @@ from decimal import Decimal, InvalidOperation
 from app.models.blueprint import ComparisonOperator, NormalizedRequirement
 
 _OPERATOR_PATTERNS = (
-    (r"\b(?:at least|minimum|not less than)\b", ComparisonOperator.GTE),
-    (r"\b(?:at most|maximum|not more than)\b", ComparisonOperator.LTE),
-    (r"\b(?:more than|greater than)\b", ComparisonOperator.GT),
-    (r"\bless than\b", ComparisonOperator.LT),
+    (r"\b(?:shall\s+not\s+exceed|not\s+exceed|no\s+more\s+than|at\s+most|maximum(?:\s+of)?|not\s+more\s+than|up\s+to)\b", ComparisonOperator.LTE),
+    (r"\b(?:shall\s+not\s+(?:be\s+)?less\s+than|not\s+(?:be\s+)?less\s+than|at\s+least|minimum(?:\s+of)?)\b", ComparisonOperator.GTE),
+    (r"\b(?:greater\s+than|more\s+than|above)\b", ComparisonOperator.GT),
+    (r"\b(?:less\s+than|below)\b", ComparisonOperator.LT),
+    (r"\b(?:exactly|equal\s+to)\b", ComparisonOperator.EQ),
 )
 _AMOUNT_PATTERN = re.compile(r"(?:₹|\bINR\b|\bRs\.?)(?:\s*)([\d,]+(?:\.\d+)?)\s*(lakh|lakhs|crore|crores)?", re.IGNORECASE)
 _PERCENT_PATTERN = re.compile(r"(\d+(?:\.\d+)?)\s*(?:%|percent\b|percentage\b)", re.IGNORECASE)
@@ -61,7 +62,7 @@ def normalize_requirement_value(text: str) -> NormalizedRequirement:
 
     lowered = text.casefold()
     if any(term in lowered for term in ("must", "shall", "is required", "mandatory")):
-        return NormalizedRequirement(value=True, operator=operator)
+        return NormalizedRequirement(value=True)
     return NormalizedRequirement(operator=operator)
 
 

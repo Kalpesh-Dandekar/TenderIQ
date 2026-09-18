@@ -152,7 +152,7 @@ def test_malformed_output_stops_after_bounded_attempts() -> None:
 
 
 class FakeBlueprintService:
-    def generate(self, document: ExtractedDocument) -> TenderBlueprint:
+    def generate(self, document: ExtractedDocument, _mode=None) -> TenderBlueprint:
         return TenderBlueprint(source_filename=document.filename, source_sha256=document.sha256)
 
 
@@ -180,7 +180,7 @@ def test_blueprint_endpoint_validation_and_mocked_success() -> None:
 
 def test_blueprint_endpoint_handles_mocked_service_error() -> None:
     class FailingService:
-        def generate(self, _document: ExtractedDocument) -> TenderBlueprint:
+        def generate(self, _document: ExtractedDocument, _mode=None) -> TenderBlueprint:
             raise GeminiServiceError("Gemini candidate extraction failed")
 
     app.dependency_overrides[get_blueprint_service] = lambda: FailingService()
