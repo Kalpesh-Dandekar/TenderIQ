@@ -3,11 +3,12 @@ export type ReviewState = "ready" | "needs-review" | "reviewed";
 
 export interface EvidenceSource {
   page: number;
-  section: string;
+  section: string | null;
   excerpt: string;
   interpretation: string;
-  evidenceId: string;
-  sourceReference: string;
+  evidenceId?: string;
+  sourceReference?: string;
+  additionalSources?: Array<{ page: number; section: string | null; excerpt: string; sourceReference?: string }>;
 }
 
 export interface BlueprintRequirement {
@@ -15,17 +16,18 @@ export interface BlueprintRequirement {
   category: BlueprintCategory;
   title: string;
   description: string;
-  mandatory: boolean;
+  mandatory: boolean | null;
   value?: string;
   evidenceExpected?: string[];
   review: ReviewState;
   reviewReason?: string;
+  attributes?: Array<{ label: string; value: string }>;
   evidence: EvidenceSource;
 }
 
 export interface TechnicalCriterion extends BlueprintRequirement {
-  maximumMarks: number;
-  minimumMarks: number;
+  maximumMarks: number | null;
+  minimumMarks: number | null;
 }
 
 export interface FormulaDefinition {
@@ -40,9 +42,10 @@ export interface ContractualGroup {
 }
 
 export interface BlueprintPreview {
+  dataSource: "preview" | "backend";
   tender: { title: string; reference: string; document: string; pages: number; status: string };
   qualification: BlueprintRequirement[];
   technical: { threshold: number; total: number; criteria: TechnicalCriterion[]; requirements: BlueprintRequirement[] };
-  commercial: { financialFormula: FormulaDefinition; combinedFormula: FormulaDefinition; rules: BlueprintRequirement[] };
+  commercial: { financialFormula?: FormulaDefinition; combinedFormula?: FormulaDefinition; rules: BlueprintRequirement[] };
   contractual: ContractualGroup[];
 }

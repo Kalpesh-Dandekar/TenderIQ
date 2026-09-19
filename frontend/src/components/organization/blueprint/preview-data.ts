@@ -7,6 +7,7 @@ const evidence = (page: number, section: string, excerpt: string, interpretation
 const requirement = (item: BlueprintRequirement): BlueprintRequirement => item;
 
 export const previewBlueprint: BlueprintPreview = {
+  dataSource: "preview",
   tender: { title: "IT Software RFP", reference: "IIITB/IT/RFP/2026", document: "IT Software RPF.pdf", pages: 68, status: "Blueprint Generated" },
   qualification: [
     requirement({ id:"QUAL-001",category:"qualification",title:"Minimum operational experience",description:"Bidder must have operated in the relevant technology domain for at least five years.",mandatory:true,value:"≥ 5 years",evidenceExpected:["Company registration","Work history"],review:"ready",evidence:evidence(20,"Eligibility Criteria","The bidder should have been in operation for at least five years.","Minimum operational history normalized to five years.","EVI-Q-001") }),

@@ -45,6 +45,11 @@ Gemini receives unresolved local information and grounded context under a strict
 
 `POST /blueprint/tender` defaults to `HYBRID`. The frozen B4 behavior remains available only through the explicit query mode `?mode=FULL_LLM`, providing a benchmark and controlled recovery path.
 
+The HYBRID public response retains the baseline `blueprint` object and additively exposes `grounded_semantics`. The
+semantic object contains the grounded qualification requirements, technical requirements and scoring criteria,
+commercial/financial rules, and contractual rules produced from one shared evidence plan. `FULL_LLM` remains
+backward-compatible and returns `grounded_semantics: null`.
+
 Hybrid metrics record planned work units, coverage-safeguard units, context characters, actual request/retry counts, and SDK token metadata when supplied. This supports later comparison between full-LLM and hybrid utilization without inventing missing token counts.
 
 ### Blueprint evidence packaging

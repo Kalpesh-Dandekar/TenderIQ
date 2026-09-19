@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
 from app.main import app
+from app.models.aggregate_blueprint import AggregateBlueprintResponse, AggregateBlueprintResult
 from app.models.blueprint import (
     BlueprintResponse,
     CandidateDocument,
@@ -152,8 +153,10 @@ def test_malformed_output_stops_after_bounded_attempts() -> None:
 
 
 class FakeBlueprintService:
-    def generate(self, document: ExtractedDocument, _mode=None) -> TenderBlueprint:
-        return TenderBlueprint(source_filename=document.filename, source_sha256=document.sha256)
+    def generate(self, document: ExtractedDocument, _mode=None) -> AggregateBlueprintResult:
+        return AggregateBlueprintResult(
+            blueprint=TenderBlueprint(source_filename=document.filename, source_sha256=document.sha256)
+        )
 
 
 def make_pdf() -> bytes:
@@ -173,7 +176,7 @@ def test_blueprint_endpoint_validation_and_mocked_success() -> None:
         assert invalid.status_code == 415
         response = client.post("/blueprint/tender", files={"file": ("tender.pdf", make_pdf(), "application/pdf")})
         assert response.status_code == 200
-        assert BlueprintResponse.model_validate(response.json()).blueprint.source_filename == "tender.pdf"
+        assert AggregateBlueprintResponse.model_validate(response.json()).blueprint.source_filename == "tender.pdf"
     finally:
         app.dependency_overrides.clear()
 
