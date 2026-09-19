@@ -36,6 +36,11 @@ _ELIGIBILITY = re.compile(
     re.IGNORECASE,
 )
 _SECURITY = re.compile(r"\b(information security|data security|cyber security|iso\s*27001|security undertaking)\b", re.IGNORECASE)
+_SOLUTION_TECHNICAL_CONTROL = re.compile(
+    r"\b(?:solution|system|platform|application|architecture)\b.{0,100}"
+    r"\b(?:implement|support|provide|maintain|enforce|security controls?|technical controls?|capabilit(?:y|ies))\b",
+    re.IGNORECASE,
+)
 _DOCUMENT = re.compile(
     r"\b(submit|provide|attach|enclose|furnish|supporting documents?|documentary evidence|certificate|undertaking|declaration|proof)\b",
     re.IGNORECASE,
@@ -58,6 +63,11 @@ _RESIDUAL_SIGNAL = re.compile(
     r"liquidated damages|payment terms?)\b",
     re.IGNORECASE,
 )
+_TABLE_NUMBER = re.compile(r"^\d+(?:\.\d+)?$")
+_TABLE_DESCRIPTION_START = re.compile(
+    r"^(?:evaluation\b|capability\b|presentation of proposal to\b|the bidder\b|bidder\b)",
+    re.IGNORECASE,
+)
 
 
 def _normalized_evidence(text: str) -> str:
@@ -67,6 +77,8 @@ def _normalized_evidence(text: str) -> str:
 
 
 def _purpose(text: str, categories: set[RequirementCategory]) -> BlueprintPurpose:
+    if RequirementCategory.TECHNICAL in categories and _SOLUTION_TECHNICAL_CONTROL.search(text):
+        return BlueprintPurpose.TECHNICAL_REQUIREMENTS
     if _SECURITY.search(text) or RequirementCategory.SECURITY in categories:
         return BlueprintPurpose.SECURITY
     if _EVALUATION.search(text):
@@ -193,6 +205,76 @@ def _context_item(unit: GeminiWorkUnit, context, text: str | None = None, residu
             for candidate in section_candidates
         ),
     )
+
+
+def _technical_score_table_items(unit: GeminiWorkUnit) -> list[BlueprintEvidenceItem]:
+    if not any(candidate.category == RequirementCategory.TECHNICAL for candidate in unit.candidates):
+        return []
+    lines = [line.strip() for context in unit.context for line in context.text.splitlines() if line.strip()]
+    lowered = [line.casefold() for line in lines]
+    maximum_index = next((index for index, line in enumerate(lowered) if line in {"maximum", "maximum marks"}), None)
+    minimum_index = next((index for index, line in enumerate(lowered) if line in {"minimum", "minimum passing marks", "minimum marks"}), None)
+    if maximum_index is None or minimum_index is None or abs(maximum_index - minimum_index) > 5:
+        return []
+    start = next((index for index in range(max(maximum_index, minimum_index) + 1, len(lines)) if lines[index] == "1"), None)
+    if start is None:
+        return []
+
+    rows: list[tuple[str, str, str, str]] = []
+    row_start = start
+    serial = 1
+    while row_start < len(lines):
+        next_start = next(
+            (
+                index for index in range(row_start + 3, len(lines))
+                if lines[index] == str(serial + 1)
+                and index + 1 < len(lines)
+                and not _TABLE_NUMBER.fullmatch(lines[index + 1])
+                and _TABLE_NUMBER.fullmatch(lines[index - 1])
+            ),
+            None,
+        )
+        segment = lines[row_start + 1 : next_start] if next_start is not None else lines[row_start + 1 :]
+        if len(segment) < 3 or not _TABLE_NUMBER.fullmatch(segment[-1]) or not _TABLE_NUMBER.fullmatch(segment[-2]):
+            if next_start is None:
+                break
+            row_start = next_start
+            serial += 1
+            continue
+        body = segment[:-2]
+        description_start = next(
+            (index for index, line in enumerate(body[1:], start=1) if _TABLE_DESCRIPTION_START.search(line)),
+            len(body),
+        )
+        title = " ".join(body[:description_start]).strip()
+        if not title:
+            break
+        description = " ".join(body[description_start:]).strip()
+        rows.append((title, description, segment[-2], segment[-1]))
+        if next_start is None:
+            break
+        row_start = next_start
+        serial += 1
+
+    if len(rows) < 2:
+        return []
+    anchor = unit.context[-1]
+    section_ids = sorted({context.section_id for context in unit.context})
+    page_numbers = sorted({context.page_number for context in unit.context})
+    items: list[BlueprintEvidenceItem] = []
+    for index, (title, description, maximum, minimum) in enumerate(rows, start=1):
+        text = (
+            f"[TECHNICAL SCORE ROW]\nCriterion: {title}\n"
+            f"Description: {description}\nMaximum Marks: {maximum}\nMinimum Qualifying Marks: {minimum}"
+        )
+        item = _context_item(unit, anchor, text, 10_000 + index)
+        items.append(item.model_copy(update={
+            "purpose": BlueprintPurpose.TECHNICAL_EVALUATION,
+            "categories": [RequirementCategory.TECHNICAL],
+            "source_pages": page_numbers,
+            "source_section_ids": section_ids,
+        }))
+    return items
 
 
 def _confidently_irrelevant(item: BlueprintEvidenceItem) -> bool:
@@ -416,6 +498,7 @@ class BlueprintEvidencePackager:
         prefiltered_irrelevant_contexts = 0
         for unit in work_units:
             raw_items.extend(_candidate_item(candidate, unit) for candidate in unit.candidates)
+            raw_items.extend(_technical_score_table_items(unit))
             for context in unit.context:
                 section_candidates = [
                     candidate

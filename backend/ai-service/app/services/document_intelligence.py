@@ -26,6 +26,11 @@ _HEADING = re.compile(r"^\s*(?:\d+(?:\.\d+)*|[A-Z]|[IVXLC]+)[.)]?\s+\S+")
 _TOC = re.compile(r"\.{2,}\s*\d+\s*$|\bpage\s+\d+\s*$", re.I)
 _EVALUATION = re.compile(r"\b(score|marks?|weight(?:age)?|qualifying score|technical score|financial score|combined score|consolidated score|formula|lowest bid|bid value|percentage weighting)\b", re.I)
 _STANDARD = re.compile(r"\bISO\s*[-:]?\s*\d{4,5}(?::\d{4})?\b", re.I)
+_SOLUTION_TECHNICAL_CONTROL = re.compile(
+    r"\b(?:solution|system|platform|application|architecture)\b.{0,100}"
+    r"\b(?:implement|support|provide|maintain|enforce|security controls?|technical controls?|capabilit(?:y|ies))\b",
+    re.I,
+)
 _APPLICABILITY = re.compile(r"\b(bidder|vendor|tenderer|applicant|supplier)\b", re.I)
 _SUBSTANTIVE_PROCUREMENT = re.compile(
     r"\b(turnover|profitability|experience|blacklist(?:ed|ing)?|certificate|certification|membership|"
@@ -46,6 +51,8 @@ def _category_for(text: str) -> tuple[RequirementCategory, float]:
         scores[RequirementCategory.ELIGIBILITY] += 2
         if "27001" in lowered:
             scores[RequirementCategory.SECURITY] += 2
+    if _SOLUTION_TECHNICAL_CONTROL.search(text):
+        scores[RequirementCategory.TECHNICAL] += 4
     category, score = max(scores.items(), key=lambda item: item[1])
     return (category, min(0.95, 0.55 + score * 0.1)) if score else (RequirementCategory.OTHER, 0.2)
 
